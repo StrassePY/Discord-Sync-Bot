@@ -9,7 +9,7 @@ from interface.logger import Logger
 from cogs.guildSync.core.engine.syncCommands.main import SyncCommandsEngine
 from cogs.guildSync.core.engine.syncGuilds.main import GuildSyncEngine
 
-from interface.commands import moderation_group
+from interface.commands import sync_group
 from cogs.guildSync.core.ui.success_container.container import create_success_container
 from cogs.guildSync.core.config.lib import (
     disable_command_for_guild,
@@ -19,8 +19,6 @@ from cogs.guildSync.core.config.lib import (
     get_command_scope,
 )
 
-if moderation_group.get_command("synced"):
-    moderation_group.remove_command("synced")
 
 class GuildSyncCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -40,7 +38,7 @@ class GuildSyncCog(commands.Cog):
         unmanaged_guilds = [guild for guild in self.bot.guilds if guild.id not in synced_guilds]
         await self.sync_commands_engine.desync_commands(unmanaged_guilds)
 
-@moderation_group.command(name="synced", description="Show cached synced guilds.")
+@sync_group.command(name="view", description="Show cached synced guilds.")
 async def show_synced_guilds(interaction: discord.Interaction) -> None:
     await interaction.response.defer(ephemeral=True)
 
@@ -143,9 +141,9 @@ def _success_view(message: str) -> discord.ui.LayoutView:
     return view
 
 
-@moderation_group.command(name="disable-command", description="Disable a synced command and resync immediately.")
+@sync_group.command(name="disable-command", description="Disable a synced command and resync immediately.")
 @app_commands.describe(
-    command_key="Command to disable (e.g. moderation.synced)",
+    command_key="Command to disable (e.g. sync.synced)",
     target_guild="Select the guild to apply the change to or choose all guilds",
 )
 @app_commands.autocomplete(command_key=_command_key_autocomplete, target_guild=_guild_target_autocomplete)
@@ -209,9 +207,9 @@ async def disable_command(
     )
 
 
-@moderation_group.command(name="enable-command", description="Enable a previously disabled command and resync.")
+@sync_group.command(name="enable-command", description="Enable a previously disabled command and resync.")
 @app_commands.describe(
-    command_key="Command to enable (e.g. moderation.synced)",
+    command_key="Command to enable (e.g. sync.synced)",
     target_guild="Select the guild to apply the change to or choose all guilds",
 )
 @app_commands.autocomplete(command_key=_command_key_autocomplete, target_guild=_guild_target_autocomplete)

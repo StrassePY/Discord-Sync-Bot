@@ -1,8 +1,8 @@
 from discord import app_commands
 
-moderation_group = app_commands.Group(
-    name="moderation",
-    description="Moderation related commands",
+sync_group = app_commands.Group(
+    name="sync",
+    description="Synchronization related commands",
 )
 
 debug_group = app_commands.Group(
@@ -11,6 +11,6 @@ debug_group = app_commands.Group(
 )
 
 ROOT_COMMAND_GROUPS = (
-    moderation_group,
+    sync_group,
     debug_group,
 )

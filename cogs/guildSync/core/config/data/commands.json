@@ -1,17 +1,19 @@
 {
     "commands": {
-        "debug.ping": [],
-        "moderation.disable-command": {
+        "debug.ping": [
+            "1414979787079946421"
+        ],
+        "syncle-command": {
             "exclude": [
                 "1414979787079946421"
             ]
         },
-        "moderation.enable-command": {
+        "syncand": {
             "exclude": [
                 "1414979787079946421"
             ]
         },
-        "moderation.synced": [
+        "sync.synced": [
             "*"
         ]
     }

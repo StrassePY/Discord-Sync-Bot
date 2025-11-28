@@ -1,4 +1,4 @@
-from .main import GuildSyncCog, moderation_group
+from .main import GuildSyncCog
 
 async def setup(bot) -> None:
     await bot.add_cog(GuildSyncCog(bot))
