@@ -27,7 +27,10 @@ class SyncCommandsEngine:
         await self.synchroniser.desync_guilds(guilds)
 
     def list_available_command_keys(self) -> List[Tuple[str, str]]:
-        return self.cloner.list_available_keys()
+        return self.cloner.list_available_keys(include_groups=True)
+
+    def expand_command_key(self, command_key: str) -> List[str]:
+        return self.cloner.expand_key(command_key)
 
     async def sync_selected_guilds(
         self,

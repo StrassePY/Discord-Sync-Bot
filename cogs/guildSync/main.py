@@ -10,7 +10,10 @@ from cogs.guildSync.core.engine.syncCommands.main import SyncCommandsEngine
 from cogs.guildSync.core.engine.syncGuilds.main import GuildSyncEngine
 
 from interface.commands import sync_group
-from cogs.guildSync.core.ui.success_container.container import create_success_container
+from cogs.guildSync.core.ui.success_container.container import (
+    create_progress_container,
+    create_success_container,
+)
 from cogs.guildSync.core.config.lib import (
     disable_command_for_guild,
     disable_command_globally,
@@ -141,6 +144,37 @@ def _success_view(message: str) -> discord.ui.LayoutView:
     return view
 
 
+def _progress_view(message: str) -> discord.ui.LayoutView:
+    view = discord.ui.LayoutView(timeout=None)
+    view.add_item(create_progress_container(message))
+    return view
+
+
+def _normalize_command_key(value: str) -> str:
+    return value.replace(" ", ".").lower()
+
+
+def _selection_display_label(entries: Dict[str, str], normalized_key: str, original_key: str) -> str:
+    if normalized_key.endswith(".*"):
+        return entries.get(normalized_key, original_key)
+    return original_key
+
+
+def _format_scope_value(scope: object) -> str:
+    return "global" if scope is None else str(scope)
+
+
+def _build_scope_summary(command_keys: List[str]) -> str:
+    scope_values = [_format_scope_value(get_command_scope(key)) for key in command_keys]
+    unique_scopes = sorted(set(scope_values))
+
+    if len(command_keys) == 1 or len(unique_scopes) == 1:
+        return f"Current scope: `{unique_scopes[0]}`."
+
+    scope_list = ", ".join(f"`{scope}`" for scope in unique_scopes)
+    return f"Updated {len(command_keys)} commands. Scopes include: {scope_list}."
+
+
 @sync_group.command(name="disable-command", description="Disable a synced command and resync immediately.")
 @app_commands.describe(
     command_key="Command to disable (e.g. sync.synced)",
@@ -178,18 +212,46 @@ async def disable_command(
         f"{guild.name} ({guild_id})" for guild_id, guild in target_map.items()
     )
 
-    if target_guild == "global":
-        changed = disable_command_globally(command_key)
+    normalized_key = _normalize_command_key(command_key)
+    available_entries = dict(guild_sync_cog.sync_commands_engine.list_available_command_keys())
+    is_group_selection = normalized_key.endswith(".*")
+    if not is_group_selection and normalized_key not in available_entries:
+        expanded_keys: List[str] = []
     else:
-        target_id = next(iter(target_map))
-        changed = disable_command_for_guild(command_key, target_id)
-
-    if not changed:
+        expanded_keys = guild_sync_cog.sync_commands_engine.expand_command_key(normalized_key)
+    if not expanded_keys:
         await interaction.followup.send(
-            f"`{command_key}` is already disabled for {target_label}.",
+            f"No commands matched `{command_key}`.",
             ephemeral=True,
         )
         return
+
+    selection_display = _selection_display_label(available_entries, normalized_key, command_key)
+    target_id = None if target_guild == "global" else next(iter(target_map))
+
+    changed_keys: List[str] = []
+    for resolved_key in expanded_keys:
+        if target_guild == "global":
+            if disable_command_globally(resolved_key):
+                changed_keys.append(resolved_key)
+        else:
+            assert target_id is not None
+            if disable_command_for_guild(resolved_key, target_id):
+                changed_keys.append(resolved_key)
+
+    if not changed_keys:
+        await interaction.followup.send(
+            f"`{selection_display}` is already disabled for {target_label}.",
+            ephemeral=True,
+        )
+        return
+
+    progress_message = await interaction.followup.send(
+        view=_progress_view(
+            f"Disabling `{selection_display}` for {target_label}. Syncing changes...",
+        ),
+        ephemeral=True,
+    )
 
     await guild_sync_cog.sync_commands_engine.sync_selected_guilds(
         target_map,
@@ -198,12 +260,11 @@ async def disable_command(
         include_progress=False,
     )
 
-    new_scope = get_command_scope(command_key)
-    await interaction.followup.send(
+    scope_summary = _build_scope_summary(changed_keys)
+    await progress_message.edit(
         view=_success_view(
-            f"Disabled `{command_key}` for {target_label}. Current scope: `{new_scope}`.",
-        ),
-        ephemeral=True,
+            f"Disabled `{selection_display}` for {target_label}. {scope_summary}"
+        )
     )
 
 
@@ -244,18 +305,46 @@ async def enable_command(
         f"{guild.name} ({guild_id})" for guild_id, guild in target_map.items()
     )
 
-    if target_guild == "global":
-        changed = enable_command_globally(command_key)
+    normalized_key = _normalize_command_key(command_key)
+    available_entries = dict(guild_sync_cog.sync_commands_engine.list_available_command_keys())
+    is_group_selection = normalized_key.endswith(".*")
+    if not is_group_selection and normalized_key not in available_entries:
+        expanded_keys: List[str] = []
     else:
-        target_id = next(iter(target_map))
-        changed = enable_command_for_guild(command_key, target_id)
-
-    if not changed:
+        expanded_keys = guild_sync_cog.sync_commands_engine.expand_command_key(normalized_key)
+    if not expanded_keys:
         await interaction.followup.send(
-            f"`{command_key}` is already enabled for {target_label}.",
+            f"No commands matched `{command_key}`.",
             ephemeral=True,
         )
         return
+
+    selection_display = _selection_display_label(available_entries, normalized_key, command_key)
+    target_id = None if target_guild == "global" else next(iter(target_map))
+
+    changed_keys: List[str] = []
+    for resolved_key in expanded_keys:
+        if target_guild == "global":
+            if enable_command_globally(resolved_key):
+                changed_keys.append(resolved_key)
+        else:
+            assert target_id is not None
+            if enable_command_for_guild(resolved_key, target_id):
+                changed_keys.append(resolved_key)
+
+    if not changed_keys:
+        await interaction.followup.send(
+            f"`{selection_display}` is already enabled for {target_label}.",
+            ephemeral=True,
+        )
+        return
+
+    progress_message = await interaction.followup.send(
+        view=_progress_view(
+            f"Enabling `{selection_display}` for {target_label}. Syncing changes...",
+        ),
+        ephemeral=True,
+    )
 
     await guild_sync_cog.sync_commands_engine.sync_selected_guilds(
         target_map,
@@ -264,11 +353,9 @@ async def enable_command(
         include_progress=False,
     )
 
-    new_scope = get_command_scope(command_key)
-    scope_display = "global" if new_scope is None else new_scope
-    await interaction.followup.send(
+    scope_summary = _build_scope_summary(changed_keys)
+    await progress_message.edit(
         view=_success_view(
-            f"Enabled `{command_key}` for {target_label}. Current scope: `{scope_display}`.",
-        ),
-        ephemeral=True,
+            f"Enabled `{selection_display}` for {target_label}. {scope_summary}"
+        )
     )

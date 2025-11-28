@@ -1,20 +1,5 @@
 {
     "commands": {
-        "debug.ping": [
-            "1414979787079946421"
-        ],
-        "syncle-command": {
-            "exclude": [
-                "1414979787079946421"
-            ]
-        },
-        "syncand": {
-            "exclude": [
-                "1414979787079946421"
-            ]
-        },
-        "sync.synced": [
-            "*"
-        ]
+
     }
 }
