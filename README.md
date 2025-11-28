@@ -1,5 +1,10 @@
 # Discord Sync Bot
 
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/StrassePY/Discord-Sync-Bot/actions)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/your/repo?style=social)](https://github.com/StrassePY/Discord-Sync-Bot)
+
+
 An opinionated Discord bot template that keeps application commands in sync across multiple guilds. It bundles a configurable guild registry, per-guild command scoping, and moderation utilities that let administrators enable or disable slash commands without touching the codebase.
 
 - **Per-guild command control** – scope any slash command globally, to selected guilds, or exclude specific servers via JSON config or moderation commands.
