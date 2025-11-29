@@ -37,9 +37,10 @@ class GuildSyncCog(commands.Cog):
         await self.bot.wait_until_ready()
         await self.sync_guilds_engine.sync_guilds()
         synced_guilds = await self.sync_guilds_engine.ensure_guilds()
-        await self.sync_commands_engine.sync_commands(synced_guilds)
-        unmanaged_guilds = [guild for guild in self.bot.guilds if guild.id not in synced_guilds]
-        await self.sync_commands_engine.desync_commands(unmanaged_guilds)
+        if synced_guilds:
+            await self.sync_commands_engine.sync_commands(synced_guilds)
+            unmanaged_guilds = [guild for guild in self.bot.guilds if guild.id not in synced_guilds]
+            await self.sync_commands_engine.desync_commands(unmanaged_guilds)
 
 @sync_group.command(name="view", description="Show cached synced guilds.")
 async def show_synced_guilds(interaction: discord.Interaction) -> None:

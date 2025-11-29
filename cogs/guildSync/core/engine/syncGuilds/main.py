@@ -36,6 +36,7 @@ class GuildSyncEngine:
         if not loaded_guilds:
             Logger.warning("GuildSyncEngine -", "No guilds configured; nothing to sync.")
             self.state.clear()
+            await self._prompt_unmanaged_guilds(list(self.bot.guilds))
             return self.state.snapshot()
 
         Logger.info("GuildSyncEngine -", "Starting guild synchronization process.")
