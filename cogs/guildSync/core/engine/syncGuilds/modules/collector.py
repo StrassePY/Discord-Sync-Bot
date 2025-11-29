@@ -88,13 +88,14 @@ class ConfiguredGuildsCollector:
                 f"Guild {guild_name} ({guild_id}) could not be synchronized.",
             )
 
-    def report_unmanaged(self, configured_ids: Iterable[int]) -> None:
+    def report_unmanaged(self, configured_ids: Iterable[int]) -> List[discord.Guild]:
         unmanaged = [guild for guild in self.bot.guilds if guild.id not in configured_ids]
         if not unmanaged:
-            return
+            return []
 
         details = ", ".join(f"{guild.name} ({guild.id})" for guild in unmanaged)
         Logger.info(
             "GuildSyncEngine -",
             f"Bot is in guilds not present in config: {details}.",
         )
+        return unmanaged

@@ -6,9 +6,11 @@ from typing import Any, Dict, Iterable, Optional, Set
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), "data")
 GUILDS_FILE = os.path.join(CONFIG_DIR, "guilds.json")
 COMMANDS_FILE = os.path.join(CONFIG_DIR, "commands.json")
+UNMANAGED_FILE = os.path.join(CONFIG_DIR, "unmanaged.json")
 
 _GUILDS_DEFAULT: Dict[str, int] = {}
 _COMMANDS_DEFAULT: Dict[str, Any] = {"commands": {}}
+_UNMANAGED_DEFAULT: Dict[str, Any] = {"suppressed": []}
 
 
 def _ensure_config_dir() -> None:
@@ -69,9 +71,71 @@ command_scopes: Dict[str, Any] = {
     for command_key, value in _loaded_command_scopes.get("commands", {}).items()
 }
 
+_loaded_unmanaged = _load_json(UNMANAGED_FILE, _UNMANAGED_DEFAULT)
+_suppressed_guilds: Set[str] = {
+    str(guild_id) for guild_id in _loaded_unmanaged.get("suppressed", [])
+}
+
+
+def _save_unmanaged() -> None:
+    with open(UNMANAGED_FILE, "w", encoding="utf-8") as file:
+        json.dump({"suppressed": sorted(_suppressed_guilds)}, file, indent=4)
+
+
+def is_guild_suppressed(guild_id: int) -> bool:
+    return str(guild_id) in _suppressed_guilds
+
+
+def suppress_guild(guild_id: int) -> None:
+    key = str(guild_id)
+    if key in _suppressed_guilds:
+        return
+
+    _suppressed_guilds.add(key)
+    _save_unmanaged()
+
+
+def clear_suppressed_guild(guild_id: int) -> None:
+    key = str(guild_id)
+    if key not in _suppressed_guilds:
+        return
+
+    _suppressed_guilds.remove(key)
+    _save_unmanaged()
+
 
 def _stringify_ids(ids: Iterable[Any]) -> Set[str]:
     return {str(item) for item in ids}
+
+
+def _save_guilds() -> None:
+    serializable = {
+        name: int(guild_id)
+        for name, guild_id in sorted(loaded_guilds.items(), key=lambda item: item[0].lower())
+    }
+
+    with open(GUILDS_FILE, "w", encoding="utf-8") as file:
+        json.dump(serializable, file, indent=4)
+
+
+def register_guild(guild_name: str, guild_id: int, *, overwrite: bool = False) -> bool:
+    normalized_name = guild_name.strip()
+    if not normalized_name:
+        raise ValueError("Guild name cannot be empty.")
+
+    existing = loaded_guilds.get(normalized_name)
+    if existing == guild_id:
+        return False
+
+    if existing is not None and not overwrite:
+        raise ValueError(
+            f"Guild name '{normalized_name}' already maps to a different guild ({existing})."
+        )
+
+    loaded_guilds[normalized_name] = int(guild_id)
+    clear_suppressed_guild(guild_id)
+    _save_guilds()
+    return True
 
 
 def _save_command_scopes() -> None:

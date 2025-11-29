@@ -72,7 +72,7 @@ An opinionated Discord bot template that keeps application commands in sync acro
 
 All commands are exposed under grouped namespaces defined in `interface/commands.py`.
 
-- `sync synced` – Shows a dashboard-style view of synced guilds, registered commands, and disabled groups.
+- `sync view` – Shows a dashboard-style view of synced guilds, registered commands, and disabled groups.
 - `sync disable-command <command> <guild|global>` – Disable a command for a specific guild or every guild and immediately re-sync.
 - `sync enable-command <command> <guild|global>` – Re-enable a command where it was disabled and re-sync the target guilds.
 - `debug ping` – Quick latency check that responds ephemerally.

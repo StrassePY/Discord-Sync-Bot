@@ -54,7 +54,7 @@ async def show_synced_guilds(interaction: discord.Interaction) -> None:
     synced_guilds = guild_sync_cog.sync_guilds_engine.synced_guilds
     command_snapshot = guild_sync_cog.sync_commands_engine.get_guild_commands()
     disabled_groups = guild_sync_cog.sync_commands_engine.get_disabled_groups()
-    from cogs.guildSync.core.ui.containers import ViewSyncedContainer
+    from cogs.guildSync.core.ui.viewSyncedView import ViewSyncedContainer
     view = ViewSyncedContainer(
         synced_guild=synced_guilds,
         client=interaction.client,
