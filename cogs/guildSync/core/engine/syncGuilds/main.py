@@ -28,6 +28,7 @@ class GuildSyncEngine:
         self.registrar = ConfiguredGuildRegistrar(bot, self.collector)
         self.commands_engine: Optional["SyncCommandsEngine"] = None
         self._active_invites: Set[int] = set()
+        self._removed_ids: Set[int] = set()
 
     def attach_commands_engine(self, engine: "SyncCommandsEngine") -> None:
         self.commands_engine = engine
@@ -41,8 +42,11 @@ class GuildSyncEngine:
 
         Logger.info("GuildSyncEngine -", "Starting guild synchronization process.")
 
+        previous_ids = set(self.synced_guilds.keys())
         result = await self.collector.collect(loaded_guilds)
         self.state.replace(result.resolved)
+        current_ids = set(result.resolved.keys())
+        self._removed_ids = previous_ids - current_ids
 
         self.collector.report_missing(result.missing)
         unmanaged = self.collector.report_unmanaged(loaded_guilds.values())
@@ -95,6 +99,9 @@ class GuildSyncEngine:
 
     async def _sync_commands_for_guild(self, guild_id: int, guild: discord.Guild) -> None:
         await self.command_synchroniser.sync_commands(guild_id, guild, self.commands_engine)
+
+    def get_removed_guild_ids(self) -> Set[int]:
+        return set(self._removed_ids)
 
     async def _prompt_unmanaged_guilds(self, unmanaged_guilds: List[discord.Guild]) -> None:
         if not unmanaged_guilds:

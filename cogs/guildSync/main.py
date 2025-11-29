@@ -10,7 +10,7 @@ from cogs.guildSync.core.engine.syncCommands.main import SyncCommandsEngine
 from cogs.guildSync.core.engine.syncGuilds.main import GuildSyncEngine
 
 from interface.commands import sync_group
-from cogs.guildSync.core.ui.success_container.container import (
+from cogs.guildSync.core.ui.notificationView import (
     create_progress_container,
     create_success_container,
 )
@@ -39,8 +39,10 @@ class GuildSyncCog(commands.Cog):
         synced_guilds = await self.sync_guilds_engine.ensure_guilds()
         if synced_guilds:
             await self.sync_commands_engine.sync_commands(synced_guilds)
-            unmanaged_guilds = [guild for guild in self.bot.guilds if guild.id not in synced_guilds]
-            await self.sync_commands_engine.desync_commands(unmanaged_guilds)
+            removed_ids = self.sync_guilds_engine.get_removed_guild_ids()
+            if removed_ids:
+                removed_guilds = [guild for guild in self.bot.guilds if guild.id in removed_ids]
+                await self.sync_commands_engine.desync_commands(removed_guilds)
 
 @sync_group.command(name="view", description="Show cached synced guilds.")
 async def show_synced_guilds(interaction: discord.Interaction) -> None:
