@@ -22,6 +22,26 @@ from cogs.guildSync.core.config.lib import (
     get_command_scope,
 )
 
+REQUIRED_VERSION = (2, 3, 0)
+
+def _current_version_tuple() -> tuple[int, int, int]:
+    info = getattr(discord, "version_info", None)
+    if info:
+        return info.major, info.minor, info.micro
+
+    parts: List[int] = []
+    for part in discord.__version__.split("."):
+        digits = "".join(ch for ch in part if ch.isdigit())
+        if digits:
+            parts.append(int(digits))
+        if len(parts) == 3:
+            break
+
+    while len(parts) < 3:
+        parts.append(0)
+
+    return tuple(parts[:3])
+
 
 class GuildSyncCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -35,6 +55,16 @@ class GuildSyncCog(commands.Cog):
 
     async def _sync_on_ready(self) -> None:
         await self.bot.wait_until_ready()
+        current = _current_version_tuple()
+        if current < REQUIRED_VERSION:
+            print("")
+            Logger.warning(
+                "GuildSyncCog -",
+                f"Discord.py version {'.'.join(map(str, REQUIRED_VERSION))} or higher is needed to run the guildSync cog. Unloading cog. Your current version is: {discord.__version__}"
+            )
+            await self.bot.remove_cog(self.qualified_name)
+            return
+
         await self.sync_guilds_engine.sync_guilds()
         synced_guilds = await self.sync_guilds_engine.ensure_guilds()
         if synced_guilds:

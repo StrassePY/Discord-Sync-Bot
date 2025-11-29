@@ -4,6 +4,7 @@ from discord import app_commands
 
 from config.lib import TOKEN, GUILD_ID
 from interface.logger import Logger
+import sys
 
 intents = discord.Intents.all() # Enable all intents
 intents.message_content = True # Enable message content intent
@@ -53,6 +54,9 @@ class aclient(commands.Bot):
             Logger.success("Discord Client -", f"Bot is online as {self.user} (ID: {self.user.id})")
         else:
             Logger.error("Discord Client -", "Bot user is not available.")
+
+        Logger.info("Client Info -", f"Python version: {sys.version.split()[0]}")
+        Logger.info("Client Info -", f"Discord.py version: {discord.__version__}")
 
     async def setup_hook(self):
         pass # This function can be used to make views like: buttons, dropdowns, etc persistent. Check the REPO for information.
