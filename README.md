@@ -1,4 +1,5 @@
-# Discord Sync Bot
+![Banner](demos/Banner.png)
+# Discord Sync Bot 
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/StrassePY/Discord-Sync-Bot/actions)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
