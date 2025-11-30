@@ -11,8 +11,8 @@ from cogs.guildSync.core.engine.syncGuilds.main import GuildSyncEngine
 
 from interface.commands import sync_group
 from cogs.guildSync.core.ui.notificationView import (
-    create_progress_container,
     create_success_container,
+    create_error_container,
 )
 from cogs.guildSync.core.config.lib import (
     disable_command_for_guild,
@@ -176,12 +176,10 @@ def _success_view(message: str) -> discord.ui.LayoutView:
     view.add_item(create_success_container(message))
     return view
 
-
-def _progress_view(message: str) -> discord.ui.LayoutView:
+def _error_view(message: str) -> discord.ui.LayoutView:
     view = discord.ui.LayoutView(timeout=None)
-    view.add_item(create_progress_container(message))
+    view.add_item(create_error_container(message))
     return view
-
 
 def _normalize_command_key(value: str) -> str:
     return value.replace(" ", ".").lower()
@@ -220,8 +218,12 @@ async def disable_command(
     target_guild: str,
 ) -> None:
     if not _ensure_admin(interaction):
+        # await interaction.response.send_message(
+        #     "You must run this command inside a guild with administrator permissions.",
+        #     ephemeral=True,
+        # )
         await interaction.response.send_message(
-            "You must run this command inside a guild with administrator permissions.",
+            view=_error_view("You must run this command inside a guild with administrator permissions."),
             ephemeral=True,
         )
         return
@@ -230,13 +232,16 @@ async def disable_command(
 
     guild_sync_cog = interaction.client.get_cog("GuildSyncCog")
     if not isinstance(guild_sync_cog, GuildSyncCog):
-        await interaction.followup.send("Guild sync cog is not loaded.", ephemeral=True)
+        await interaction.followup.send(
+            view=_error_view("Guild sync cog is not loaded."),
+            ephemeral=True,
+        )
         return
 
     target_map = _resolve_target_guilds(guild_sync_cog, target_guild)
     if not target_map:
         await interaction.followup.send(
-            "Unable to resolve the selected guild.",
+            view=_error_view("Unable to resolve the selected guild."),
             ephemeral=True,
         )
         return
@@ -254,7 +259,7 @@ async def disable_command(
         expanded_keys = guild_sync_cog.sync_commands_engine.expand_command_key(normalized_key)
     if not expanded_keys:
         await interaction.followup.send(
-            f"No commands matched `{command_key}`.",
+            view=_error_view(f"No commands matched `{command_key}`."),
             ephemeral=True,
         )
         return
@@ -274,30 +279,25 @@ async def disable_command(
 
     if not changed_keys:
         await interaction.followup.send(
-            f"`{selection_display}` is already disabled for {target_label}.",
+            view=_error_view(f"`{selection_display}` is already disabled for {target_label}."),
             ephemeral=True,
         )
         return
-
-    progress_message = await interaction.followup.send(
-        view=_progress_view(
-            f"Disabling `{selection_display}` for {target_label}. Syncing changes...",
-        ),
-        ephemeral=True,
-    )
 
     await guild_sync_cog.sync_commands_engine.sync_selected_guilds(
         target_map,
         clear_global=(target_guild == "global"),
         reset_snapshots=(target_guild == "global"),
         include_progress=False,
+        progress_callback=None,
     )
 
     scope_summary = _build_scope_summary(changed_keys)
-    await progress_message.edit(
+    await interaction.followup.send(
         view=_success_view(
             f"Disabled `{selection_display}` for {target_label}. {scope_summary}"
-        )
+        ),
+        ephemeral=True,
     )
 
 
@@ -314,7 +314,7 @@ async def enable_command(
 ) -> None:
     if not _ensure_admin(interaction):
         await interaction.response.send_message(
-            "You must run this command inside a guild with administrator permissions.",
+            view=_error_view("You must run this command inside a guild with administrator permissions."),
             ephemeral=True,
         )
         return
@@ -323,13 +323,13 @@ async def enable_command(
 
     guild_sync_cog = interaction.client.get_cog("GuildSyncCog")
     if not isinstance(guild_sync_cog, GuildSyncCog):
-        await interaction.followup.send("Guild sync cog is not loaded.", ephemeral=True)
+        await interaction.followup.send(view=_error_view("Guild sync cog is not loaded."))
         return
 
     target_map = _resolve_target_guilds(guild_sync_cog, target_guild)
     if not target_map:
         await interaction.followup.send(
-            "Unable to resolve the selected guild.",
+            view=_error_view("Unable to resolve the selected guild."),
             ephemeral=True,
         )
         return
@@ -367,28 +367,23 @@ async def enable_command(
 
     if not changed_keys:
         await interaction.followup.send(
-            f"`{selection_display}` is already enabled for {target_label}.",
+            view=_error_view(f"`{selection_display}` is already enabled for {target_label}."),
             ephemeral=True,
         )
         return
-
-    progress_message = await interaction.followup.send(
-        view=_progress_view(
-            f"Enabling `{selection_display}` for {target_label}. Syncing changes...",
-        ),
-        ephemeral=True,
-    )
 
     await guild_sync_cog.sync_commands_engine.sync_selected_guilds(
         target_map,
         clear_global=(target_guild == "global"),
         reset_snapshots=(target_guild == "global"),
         include_progress=False,
+        progress_callback=None,
     )
 
     scope_summary = _build_scope_summary(changed_keys)
-    await progress_message.edit(
+    await interaction.followup.send(
         view=_success_view(
             f"Enabled `{selection_display}` for {target_label}. {scope_summary}"
-        )
+        ),
+        ephemeral=True,
     )
