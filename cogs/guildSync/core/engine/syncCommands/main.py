@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
+from typing import Awaitable, Callable, Dict, List, Optional, Tuple
+
+import inspect
 
 import discord
 from discord.ext import commands
@@ -10,6 +12,8 @@ from interface.logger import Logger
 from interface.commands import ROOT_COMMAND_GROUPS
 
 from .modules.sync import GuildSynchroniser
+
+ProgressCallback = Callable[[int, int, int, float, str], Optional[Awaitable[None]]]
 
 class SyncCommandsEngine:
     def __init__(self, bot: commands.Bot) -> None:
@@ -39,6 +43,7 @@ class SyncCommandsEngine:
         clear_global: bool = False,
         reset_snapshots: bool = False,
         include_progress: bool = False,
+        progress_callback: ProgressCallback | None = None,
     ) -> Dict[int, List[AppCommand]]:
         if not guilds:
             Logger.warning("SyncCommandsEngine -", "No guilds provided for command sync.")
@@ -51,17 +56,35 @@ class SyncCommandsEngine:
             self.state.reset()
 
         results: Dict[int, List[AppCommand]] = {}
+        total = len(guilds)
 
-        for guild_id, guild in guilds.items():
+        progress_enabled = include_progress or progress_callback is not None
+
+        for index, (guild_id, guild) in enumerate(guilds.items(), start=1):
+            async def guild_progress(percent: float, message: str, *, idx=index, gid=guild_id) -> None:
+                if progress_callback is None:
+                    return
+
+                outcome = progress_callback(idx, total, gid, percent, message)
+                if inspect.isawaitable(outcome):
+                    await outcome
+
             synced = await self.synchroniser.sync_guild(
                 guild_id,
                 guild,
-                include_progress=include_progress,
+                include_progress=progress_enabled,
+                progress_notifier=guild_progress if progress_callback is not None else None,
             )
             if synced is not None:
                 results[guild_id] = synced
+                final_message = f"Completed sync for {guild.name} ({guild_id})."
             else:
                 self.state.remove_guild(guild_id)
+                final_message = f"Sync failed for {guild.name} ({guild_id})."
+
+            if progress_callback is not None:
+                if synced is None or total > 1:
+                    await guild_progress(100.0, final_message)
 
         if not results:
             Logger.warning(
