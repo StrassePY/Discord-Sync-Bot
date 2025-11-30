@@ -1,9 +1,26 @@
-# Discord Sync Bot
+<p align="center">
+  <img src="demos/Banner.png" alt="Banner" />
+</p>
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/StrassePY/Discord-Sync-Bot/actions)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Stars](https://img.shields.io/github/stars/StrassePY/Discord-Sync-Bot?style=social)](https://github.com/StrassePY/Discord-Sync-Bot)
+<h1 align="center">Discord Sync Bot</h1>
 
+<p align="center">
+  <a href="https://github.com/StrassePY/Discord-Sync-Bot/actions">
+    <img src="https://img.shields.io/badge/build-passing-brightgreen" alt="Build Status" />
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" />
+  </a>
+  <a href="https://github.com/StrassePY/Discord-Sync-Bot/releases">
+    <img src="https://img.shields.io/github/v/release/StrassePY/Discord-Sync-Bot" alt="Release" />
+  </a>
+  <a href="https://github.com/StrassePY/Discord-Sync-Bot">
+    <img src="https://img.shields.io/github/stars/StrassePY/Discord-Sync-Bot?style=social" alt="Stars" />
+  </a>
+  <img src="https://img.shields.io/github/issues/StrassePY/Discord-Sync-Bot" alt="Open issues" />
+  <img src="https://img.shields.io/github/issues-pr/StrassePY/Discord-Sync-Bot" alt="Open PRs" />
+  <img src="https://img.shields.io/github/last-commit/StrassePY/Discord-Sync-Bot" alt="Last commit" />
+</p>
 
 An opinionated Discord bot template that keeps application commands in sync across multiple guilds. It bundles a configurable guild registry, per-guild command scoping, and syncties that let administrators enable or disable slash commands without touching the codebase.
 
