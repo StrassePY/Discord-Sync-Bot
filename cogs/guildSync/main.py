@@ -8,8 +8,9 @@ from interface.logger import Logger
 
 from cogs.guildSync.core.engine.syncCommands.main import SyncCommandsEngine
 from cogs.guildSync.core.engine.syncGuilds.main import GuildSyncEngine
+from cogs.guildSync.core.engine.syncCog import SyncCogEngine
 
-from interface.commands import sync_group
+from interface.commands import sync_group, sync_cog_group, sync_command_group
 from cogs.guildSync.core.ui.notificationView import (
     create_success_container,
     create_error_container,
@@ -49,6 +50,7 @@ class GuildSyncCog(commands.Cog):
         self.sync_commands_engine = SyncCommandsEngine(bot)
         self.sync_guilds_engine = GuildSyncEngine(bot)
         self.sync_guilds_engine.attach_commands_engine(self.sync_commands_engine)
+        self.sync_cog_engine = SyncCogEngine(bot, self.sync_guilds_engine, self.sync_commands_engine)
 
     async def cog_load(self) -> None:
         asyncio.create_task(self._sync_on_ready())
@@ -146,6 +148,47 @@ async def _guild_target_autocomplete(
     return choices
 
 
+def _extension_choice_values(entries: List[str], current: str) -> List[app_commands.Choice[str]]:
+    current_lower = current.lower()
+    choices: List[app_commands.Choice[str]] = []
+
+    for name in entries:
+        if current_lower and current_lower not in name.lower():
+            continue
+        choices.append(app_commands.Choice(name=name[:100], value=name))
+        if len(choices) >= 25:
+            break
+
+    return choices
+
+
+async def _loaded_extension_autocomplete(
+    interaction: discord.Interaction,
+    current: str,
+) -> List[app_commands.Choice[str]]:
+    guild_sync_cog = interaction.client.get_cog("GuildSyncCog")
+    if not isinstance(guild_sync_cog, GuildSyncCog):
+        return []
+
+    entries = guild_sync_cog.sync_cog_engine.list_loaded_extensions()
+    return _extension_choice_values(entries, current)
+
+
+async def _available_extension_autocomplete(
+    interaction: discord.Interaction,
+    current: str,
+) -> List[app_commands.Choice[str]]:
+    guild_sync_cog = interaction.client.get_cog("GuildSyncCog")
+    if not isinstance(guild_sync_cog, GuildSyncCog):
+        return []
+
+    engine = guild_sync_cog.sync_cog_engine
+    entries = engine.list_unloaded_extensions()
+    if not entries:
+        entries = engine.list_known_extensions()
+    return _extension_choice_values(entries, current)
+
+
 def _ensure_admin(interaction: discord.Interaction) -> bool:
     if interaction.guild is None:
         return False
@@ -206,7 +249,7 @@ def _build_scope_summary(command_keys: List[str]) -> str:
     return f"Updated {len(command_keys)} commands. Scopes include: {scope_list}."
 
 
-@sync_group.command(name="disable-command", description="Disable a synced command and resync immediately.")
+@sync_command_group.command(name="disable", description="Disable a synced command and resync immediately.")
 @app_commands.describe(
     command_key="Command to disable (e.g. sync.synced)",
     target_guild="Select the guild to apply the change to or choose all guilds",
@@ -301,7 +344,7 @@ async def disable_command(
     )
 
 
-@sync_group.command(name="enable-command", description="Enable a previously disabled command and resync.")
+@sync_command_group.command(name="enable", description="Enable a previously disabled command and resync.")
 @app_commands.describe(
     command_key="Command to enable (e.g. sync.synced)",
     target_guild="Select the guild to apply the change to or choose all guilds",
@@ -387,3 +430,80 @@ async def enable_command(
         ),
         ephemeral=True,
     )
+
+@sync_cog_group.command(name="reload", description="Reload an extension and resync managed guild commands.")
+@app_commands.describe(extension="Extension path to reload (e.g. cogs.guildSync)")
+@app_commands.autocomplete(extension=_loaded_extension_autocomplete)
+async def reload_guildsync_cog(interaction: discord.Interaction, extension: str) -> None:
+    if not _ensure_admin(interaction):
+        await interaction.response.send_message(
+            view=_error_view("You must run this command inside a guild with administrator permissions."),
+            ephemeral=True,
+        )
+        return
+
+    await interaction.response.defer(ephemeral=True)
+
+    guild_sync_cog = interaction.client.get_cog("GuildSyncCog")
+    if not isinstance(guild_sync_cog, GuildSyncCog):
+        await interaction.followup.send(
+            view=_error_view("Guild sync cog is not loaded."),
+            ephemeral=True,
+        )
+        return
+
+    success, message = await guild_sync_cog.sync_cog_engine.reload_extension(extension)
+    view = _success_view(message) if success else _error_view(message)
+    await interaction.followup.send(view=view, ephemeral=True)
+
+
+@sync_cog_group.command(name="enable", description="Enable an extension and resync managed guild commands.")
+@app_commands.describe(extension="Extension path to enable (e.g. cogs.debug)")
+@app_commands.autocomplete(extension=_available_extension_autocomplete)
+async def enable_cog_with_guildsync(interaction: discord.Interaction, extension: str) -> None:
+    if not _ensure_admin(interaction):
+        await interaction.response.send_message(
+            view=_error_view("You must run this command inside a guild with administrator permissions."),
+            ephemeral=True,
+        )
+        return
+
+    await interaction.response.defer(ephemeral=True)
+
+    guild_sync_cog = interaction.client.get_cog("GuildSyncCog")
+    if not isinstance(guild_sync_cog, GuildSyncCog):
+        await interaction.followup.send(
+            view=_error_view("Guild sync cog is not loaded."),
+            ephemeral=True,
+        )
+        return
+
+    success, message = await guild_sync_cog.sync_cog_engine.enable_extension(extension)
+    view = _success_view(message) if success else _error_view(message)
+    await interaction.followup.send(view=view, ephemeral=True)
+
+
+@sync_cog_group.command(name="disable", description="Disable an extension and resync managed guild commands.")
+@app_commands.describe(extension="Extension path to disable (e.g. cogs.debug)")
+@app_commands.autocomplete(extension=_loaded_extension_autocomplete)
+async def disable_cog_with_guildsync(interaction: discord.Interaction, extension: str) -> None:
+    if not _ensure_admin(interaction):
+        await interaction.response.send_message(
+            view=_error_view("You must run this command inside a guild with administrator permissions."),
+            ephemeral=True,
+        )
+        return
+
+    await interaction.response.defer(ephemeral=True)
+
+    guild_sync_cog = interaction.client.get_cog("GuildSyncCog")
+    if not isinstance(guild_sync_cog, GuildSyncCog):
+        await interaction.followup.send(
+            view=_error_view("Guild sync cog is not loaded."),
+            ephemeral=True,
+        )
+        return
+
+    success, message = await guild_sync_cog.sync_cog_engine.disable_extension(extension)
+    view = _success_view(message) if success else _error_view(message)
+    await interaction.followup.send(view=view, ephemeral=True)
